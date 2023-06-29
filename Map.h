@@ -125,21 +125,22 @@ void Map<Key, Value>::insert(Key key, Value value){
     while(temp){
         main = temp;
 
-        if(temp->key <= key){
+        if(temp->key < key){
             temp = temp->left.get();
             is_left = true;
-        } else {
+        } else if(temp->key > key) {
             temp = temp->right.get();
             is_left = false;
+        } else {
+            temp->value = value;
+            return;
         }
     }
 
-    auto new_node = std::make_unique<Node>(key,value);
-
     if(is_left) {
-        main->left.reset(new_node.release());
+        main->left.reset(std::make_unique<Node>(key,value).release());
     } else {
-        main->right.reset(new_node.release());
+        main->right.reset(std::make_unique<Node>(key,value).release());
     }
 
 }
@@ -169,7 +170,7 @@ void Map<Key, Value>::print(){
 
     std::string drawing;
 
-    print(print, head.get(), drawing, true);
+    print(print, head.get(), drawing, false);
 
 }
 

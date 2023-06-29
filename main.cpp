@@ -30,6 +30,10 @@ int main() {
 
     Map<std::string, int> map;
 
+
+    map.insert("aboba",1);
+    map.insert("aboba",30000);
+
     for(int i = 0; i < 25; i++){
         map.insert(random_str(), i);
     }
