@@ -9,213 +9,290 @@
 #include <memory>
 
 
-template <typename Key, typename Value>
+template<typename Key, typename Value>
 class Map {
 private:
 
-    struct Node{
-        Key key;
-        Value value;
-        std::unique_ptr<Node> left = nullptr;
-        std::unique_ptr<Node> right = nullptr;
+    class Node {
+    public:
+        Key m_key;
+        Value m_value;
+        std::unique_ptr<Node> m_left = nullptr;
+        std::unique_ptr<Node> m_right = nullptr;
 
-        Node(Key key, Value value);
+        template<typename K, typename V>
+        Node(K &&key, V &&value) {
+            m_key = std::forward<K>(key);
+            m_value = std::forward<V>(value);
+        }
 
-        ~Node();
+        ~Node() = default;
     };
 
-    std::unique_ptr<Node> head = nullptr;
+    std::unique_ptr<Node> m_head = nullptr;
 
-    std::set<Key> keys_set;
+    std::set<Key> m_keys_set;
+
+    void copy(const Map &other) {
+
+        if (!other.m_head) return;
+
+        m_keys_set = other.m_keys_set;
+
+        m_head = std::make_unique<Node>(
+                other.m_head->m_key,
+                other.m_head->m_value
+        );
+
+
+        auto populate = [](auto &self, const Node *other_node, Node *to_copy_to) {
+            if (!other_node) return;
+
+            if (other_node->m_left) {
+
+                to_copy_to->m_left = std::make_unique<Node>(
+                        other_node->m_left->m_key,
+                        other_node->m_left->m_value
+                );
+
+                self(self, other_node->m_left.get(), to_copy_to->m_left.get());
+            }
+
+            if (other_node->m_right) {
+                to_copy_to->m_right = std::make_unique<Node>(
+                        other_node->m_right->m_key,
+                        other_node->m_right->m_value);
+                self(self, other_node->m_right.get(),
+                     to_copy_to->m_right.get());
+            }
+
+        };
+
+        populate(populate, other.m_head.get(), m_head.get());
+
+    }
 
 public:
 
-    Map();
+    Map() = default;
 
-    ~Map();
+    ~Map() = default;
 
-    Map(const Map& other);
-
-    Map(Map&& other) noexcept;
-
-    void insert(Key key, Value value);
-
-    size_t size();
-
-    std::set<Key> keys();
-
-    bool contains(Key key);
-
-    Value* find(Key key);
-
-    Value* operator [](Key key);
-
-    void print();
-};
-
-template<typename Key, typename Value>
-Value* Map<Key, Value>::find(Key key) {
-    Node* node = this->head.get();
-
-    while(node){
-        if(node->key == key) return &node->value;
-
-        if(key < node->key) node = node->left.get();
-        else node = node->right.get();
+    Map(const Map &other) {
+        clear();
+        copy(other);
     }
 
-    return nullptr;
-}
-
-
-template<typename Key, typename Value>
-bool Map<Key, Value>::contains(Key key) {
-    return keys_set.count(key) > 0;
-}
-
-template<typename Key, typename Value>
-Value* Map<Key, Value>::operator[](Key key) {
-    Value* value = this->find(key);
-
-    if(value) return value;
-
-    throw std::runtime_error("Key not found in Map[key]");
-}
-
-template<typename Key, typename Value>
-Map<Key, Value>::Node::~Node() {
-    // если очень хочется
-    // std::cout << "destr node, k: " << this->key << " v: " << this->value << '\n';
-}
-
-template<typename Key, typename Value>
-Map<Key, Value>::Node::Node(Key key, Value value) {
-        this->key = key;
-        this->value = value;
-}
-
-template <typename Key, typename Value>
-Map<Key, Value>::Map() = default;
-
-template <typename Key, typename Value>
-Map<Key, Value>::~Map(){
-    // если очень хочется
-    // std::cout << "destr map\n";
-}
-
-template<typename Key, typename Value>
-Map<Key, Value>::Map(const Map &other) {
-
-    if(!other.head) return;
-
-    this->keys_set = other.keys_set;
-
-    this->head = std::make_unique<Node>(other.head->key, other.head->value);
-
-
-    auto populate = [](auto& self, const Node* other_node, Node* to_copy_to){
-        if(!other_node) return;
-
-        if(other_node->left){
-            to_copy_to->left = std::make_unique<Node>(other_node->left->key, other_node->left->value);
-            self(self, other_node->left.get(), to_copy_to->left.get());
-        }
-
-        if(other_node->right){
-            to_copy_to->right = std::make_unique<Node>(other_node->right->key, other_node->right->value);
-            self(self, other_node->right.get(), to_copy_to->right.get());
-        }
-
-    };
-
-    populate(populate, other.head.get(), this->head.get());
-
-}
-
-
-template<typename Key, typename Value>
-Map<Key, Value>::Map(Map &&other) noexcept {
-    this->keys_set = std::move(other.keys_set);
-    this->head = std::move(other.head);
-}
-
-
-template <typename Key, typename Value>
-void Map<Key, Value>::insert(Key key, Value value){
-
-    this->keys_set.insert(key);
-
-    if(!head){
-        this->head = std::make_unique<Node>(key,value);
-        return;
+    Map(Map &&other) noexcept {
+        m_keys_set = std::move(other.m_keys_set);
+        m_head = std::move(other.m_head);
     }
 
+    Map &operator=(const Map &other) {
+        clear();
+        copy(other);
+    }
 
-    Node* temp = this->head.get();
-    Node* main = nullptr;
+    Map &operator=(Map &&other) noexcept {
+        m_keys_set = std::move(other.m_keys_set);
+        m_head = std::move(other.m_head);
+    }
 
-    bool is_left = false;
+    template<typename K, typename V>
+    void insert(K &&key, V &&value) {
 
-    while(temp){
-        main = temp;
+        m_keys_set.emplace(key);
 
-        if(key < temp->key){
-            temp = temp->left.get();
-            is_left = true;
-        } else if(key > temp->key) {
-            temp = temp->right.get();
-            is_left = false;
-        } else {
-            temp->value = value;
+        if (!m_head) {
+            auto node = std::make_unique<Node>(std::forward<K>(key),
+                                               std::forward<V>(value));
+            m_head.reset(node.release());
             return;
         }
-    }
 
-    if(is_left) {
-        main->left.reset(std::make_unique<Node>(key,value).release());
-    } else {
-        main->right.reset(std::make_unique<Node>(key,value).release());
-    }
 
-}
+        Node *node = m_head.get();
+        Node *parent = nullptr;
 
-template <typename Key, typename Value>
-void Map<Key, Value>::print(){
+        bool is_left = false;
 
-    auto print = [](auto& self, auto node, auto drawing, bool is_left){
+        while (node) {
+            parent = node;
 
-        if(!node) return;
-
-        std::cout << drawing;
-
-        if(is_left) std::cout << "|--";
-        else std::cout << (char)192 << "--";
-
-        std::cout << "v: " << node->value << '\n';
-
-        if(node->left){
-            self(self, node->left.get(), drawing + (is_left ? "|   " : "    "), true);
-        }
-        if(node->right){
-            self(self, node->right.get(), drawing + (is_left ? "|   " : "    "), false);
+            if (key < node->m_key) {
+                node = node->m_left.get();
+                is_left = true;
+            } else if (key > node->m_key) {
+                node = node->m_right.get();
+                is_left = false;
+            } else {
+                node->m_value = std::forward<V>(value);
+                return;
+            }
         }
 
-    };
+        auto new_node = std::make_unique<Node>(
+                std::forward<K>(key),
+                std::forward<V>(value)
+        );
 
-    std::string drawing;
 
-    print(print, head.get(), drawing, false);
+        if (is_left)
+            parent->m_left = std::move(new_node);
+        else
+            parent->m_right = std::move(new_node);
 
-}
+    }
 
-template <typename Key, typename Value>
-size_t Map<Key, Value>::size(){
-    return keys_set.size();
-}
+    [[nodiscard]] size_t size() const {
+        return m_keys_set.size();
+    }
 
-template <typename Key, typename Value>
-std::set<Key> Map<Key, Value>::keys(){
-    return keys_set;
-}
+    const std::set<Key>& keys() const {
+        return m_keys_set;
+    }
+
+    template<typename K>
+    bool contains(K &&key) {
+        return m_keys_set.count(std::forward<K>(key)) > 0;
+    }
+
+    template<typename K>
+    Value *find(K &&key) {
+
+        Node *node = m_head.get();
+
+        while (node) {
+            if (node->m_key == key) return &node->m_value;
+
+            else if (key < node->m_key) node = node->m_left.get();
+            else node = node->m_right.get();
+        }
+
+        return nullptr;
+    }
+
+    template<typename K>
+    Value &operator[](K &&key) {
+
+        Value *value = find(key);
+
+        if (value) return *value;
+
+        throw std::runtime_error("Key not found in Map[key]");
+    }
+
+    void print() {
+
+        auto print = [](auto &self, auto node, auto drawing, bool is_left) {
+
+            if (!node) return;
+
+            std::cout << drawing;
+
+            if (is_left) std::cout << "|--";
+            else std::cout << (char) 192 << "--";
+
+            std::cout << "k: " << node->m_key << '\n';
+
+            if (node->m_left) {
+                self(self, node->m_left.get(),
+                     drawing + (is_left ? "|   " : "    "), true);
+            }
+            if (node->m_right) {
+                self(self, node->m_right.get(),
+                     drawing + (is_left ? "|   " : "    "), false);
+            }
+
+        };
+
+        std::string drawing;
+
+        print(print, m_head.get(), drawing, false);
+
+    }
+
+    void clear() {
+        m_head.reset();
+        m_keys_set.clear();
+    }
+
+    template<typename K>
+    void remove(K &&key) {
+
+        m_keys_set.erase(key);
+
+        Node *node = m_head.get();
+        Node *parent = nullptr;
+        bool is_left = false;
+
+        // case 1 - no child: delete
+        // case 2 - one child: set parent to child
+        // case 3 - 2 children: do magic
+
+        // find node and parent of node
+        while (node) {
+
+            if (key == node->m_key) break;
+
+            parent = node;
+
+            if (key < node->m_key) {
+                node = node->m_left.get();
+                is_left = true;
+            } else {
+                node = node->m_right.get();
+                is_left = false;
+            }
+        }
+
+        if (!node) return; // key doesn't exist
+
+        // now we have the node to remove, and it's parent
+
+        // case 1
+        if (!node->m_left && !node->m_right) {
+            if (!parent) m_head.reset();
+            else if (is_left) parent->m_left.reset();
+            else parent->m_right.reset();
+
+            return;
+        }
+
+        // case 2
+        if (!node->m_left || !node->m_right) {
+
+            std::unique_ptr<Node> &child = node->m_left ? node->m_left
+                                                        : node->m_right;
+
+            if (!parent) m_head = std::move(child);
+            else if (is_left) parent->m_left = std::move(child);
+            else parent->m_right = std::move(child);
+
+            return;
+        }
+
+        // case 3
+        Node *largest = node->m_left.get();
+        Node *parent_of_largest = node;
+
+        // go left, find the largest value
+        while (largest->m_right) {
+            parent_of_largest = largest;
+            largest = largest->m_right.get();
+        }
+
+        node->m_key = std::move(largest->m_key);
+        node->m_value = std::move(largest->m_value);
+
+
+        if (parent_of_largest != node)
+            parent_of_largest->m_right = std::move(largest->m_left);
+        else
+            parent_of_largest->m_left = std::move(largest->m_left);
+
+    }
+};
+
 
 #endif //MAP_MAP_H

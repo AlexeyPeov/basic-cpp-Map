@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdint.h>
+#include <vector>
 
 #include "Map.h"
 
@@ -30,50 +31,58 @@ int main() {
 
     srand(time(NULL));
 
-    Map<std::string, int> map;
+    Map<int, std::string> map;
 
-
-    map.insert("aboba",1);
-    map.insert("aboba",30000);
-
-    std::string key;
     for(int i = 0; i < 25; i++){
-        key = random_str();
-        map.insert(key, i);
+        map.insert(rand() % 135, random_str());
     }
+    Map map_copy = map;
 
-    auto value = map.find(key);
-
-    std::cout << "CONTAINS: " << map.contains(key) << '\n';
-
-    if(value) std::cout << "FOUND VALUE: " <<  *value << '\n';
-    else std::cout << "DIDNT FIND VALUE\n";
-
-
-    try{
-        std::cout << "VALUE AT KEY " << key << " : " << *map[key] << '\n';
-        std::cout << "VALUE AT KEY sd : " << *map["sd"] << '\n';
-    } catch (const std::exception &exception) {
-        std::cerr << exception.what() << '\n';
-    }
-
-    //std::cout << map.size() << '\n';
 
     map.print();
 
-    // для проверки деструкторов
-    {
-        Map map_new(map);
-        std::cout << '\n' << "MAP COPY: " << '\n';
-        map_new.print();
+    std::vector<int> vector;
 
+    for(auto& k : map.keys()){
+        vector.push_back(k);
     }
 
-    Map<uint64_t, Car> car_map;
+    size_t vector_size = vector.size();
 
-    car_map.insert(123, Car());
+    int entry = 0;
+    for(int i = 0; i < vector_size; i++){
+        entry = *std::next(map.keys().begin(), rand() % map.keys().size());
+        map.remove(entry);
+    }
 
-    car_map.print();
+    std::cout << "map.remove test " << ((map.size() == 0) ? "passed" : "not passed") << '\n';
+
+    std::cout << "map.copy test " << ((map_copy.size() > 0) ? "passed" : "not passed") << '\n';
+
+    auto map_move = std::move(map_copy);
+    map_copy.print();
+    std::cout << "map.move test " << (((map_copy.size() == 0) && map_move.size() > 0) ? "passed" : "not passed") << '\n';
+
+    try {
+        map_move[999] = "asd";
+    } catch(std::exception &exception) {
+        std::cerr << exception.what() << '\n';
+        std::cout << "map assign [] exeption test: passed\n";
+    }
+
+    map_move[entry] = "sdasd";
+    if(map_move[entry] == "sdasd")
+        std::cout << "assign value via []: passed\n";
+
+    if(map_move.contains(entry) && !map_move.contains(999))
+        std::cout << "map.contains test: passed\n";
+    else
+        std::cout << "map.contains test: not passed\n";
+
+    if(map_move.find(entry) && (map_move.find(999) == nullptr))
+        std::cout << "map.find(key) test: passed\n";
+    else
+        std::cout << "map.find(key) test: not passed\n";
 
 
     return 0;
