@@ -5,7 +5,6 @@
 #ifndef MAP_MAP_H
 #define MAP_MAP_H
 
-#include <stdint.h>
 #include <set>
 #include <memory>
 
@@ -45,8 +44,43 @@ public:
 
     std::set<Key> keys();
 
+    bool contains(Key key);
+
+    Value* find(Key key);
+
+    Value* operator [](Key key);
+
     void print();
 };
+
+template<typename Key, typename Value>
+Value* Map<Key, Value>::find(Key key) {
+    Node* node = this->head.get();
+
+    while(node){
+        if(node->key == key) return &node->value;
+
+        if(key < node->key) node = node->left.get();
+        else node = node->right.get();
+    }
+
+    return nullptr;
+}
+
+
+template<typename Key, typename Value>
+bool Map<Key, Value>::contains(Key key) {
+    return keys_set.count(key) > 0;
+}
+
+template<typename Key, typename Value>
+Value* Map<Key, Value>::operator[](Key key) {
+    Value* value = this->find(key);
+
+    if(value) return value;
+
+    throw std::runtime_error("Key not found in Map[key]");
+}
 
 template<typename Key, typename Value>
 Map<Key, Value>::Node::~Node() {
@@ -125,10 +159,10 @@ void Map<Key, Value>::insert(Key key, Value value){
     while(temp){
         main = temp;
 
-        if(temp->key < key){
+        if(key < temp->key){
             temp = temp->left.get();
             is_left = true;
-        } else if(temp->key > key) {
+        } else if(key > temp->key) {
             temp = temp->right.get();
             is_left = false;
         } else {

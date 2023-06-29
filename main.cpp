@@ -1,6 +1,8 @@
 #include <iostream>
+#include <stdint.h>
 
 #include "Map.h"
+
 
 
 std::string random_str(){
@@ -34,15 +36,28 @@ int main() {
     map.insert("aboba",1);
     map.insert("aboba",30000);
 
+    std::string key;
     for(int i = 0; i < 25; i++){
-        map.insert(random_str(), i);
+        key = random_str();
+        map.insert(key, i);
     }
 
-    std::cout << map.size() << '\n';
+    auto value = map.find(key);
 
-//    for (auto &key : map.keys()) {
-//        std::cout << key << '\n';
-//    }
+    std::cout << "CONTAINS: " << map.contains(key) << '\n';
+
+    if(value) std::cout << "FOUND VALUE: " <<  *value << '\n';
+    else std::cout << "DIDNT FIND VALUE\n";
+
+
+    try{
+        std::cout << "VALUE AT KEY " << key << " : " << *map[key] << '\n';
+        std::cout << "VALUE AT KEY sd : " << *map["sd"] << '\n';
+    } catch (const std::exception &exception) {
+        std::cerr << exception.what() << '\n';
+    }
+
+    //std::cout << map.size() << '\n';
 
     map.print();
 
