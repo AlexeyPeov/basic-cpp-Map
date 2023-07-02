@@ -7,12 +7,13 @@
 
 #include <set>
 #include <memory>
+#include <mutex>
+#include <iostream>
 
 
 template<typename Key, typename Value>
 class Map {
 private:
-
     class Node {
     public:
         Key m_key;
@@ -33,8 +34,9 @@ private:
 
     std::set<Key> m_keys_set;
 
-    void copy(const Map &other) {
+    std::mutex m_mutex;
 
+    void copy(const Map &other) {
         if (!other.m_head) return;
 
         m_keys_set = other.m_keys_set;
@@ -59,11 +61,13 @@ private:
             }
 
             if (other_node->m_right) {
+
                 to_copy_to->m_right = std::make_unique<Node>(
                         other_node->m_right->m_key,
-                        other_node->m_right->m_value);
-                self(self, other_node->m_right.get(),
-                     to_copy_to->m_right.get());
+                        other_node->m_right->m_value
+                );
+
+                self(self,other_node->m_right.get(), to_copy_to->m_right.get());
             }
 
         };
@@ -88,18 +92,19 @@ public:
         m_head = std::move(other.m_head);
     }
 
-    Map &operator=(const Map &other) {
+    Map& operator=(const Map &other) {
         clear();
         copy(other);
     }
 
-    Map &operator=(Map &&other) noexcept {
+    Map& operator=(Map &&other) noexcept {
         m_keys_set = std::move(other.m_keys_set);
         m_head = std::move(other.m_head);
     }
 
     template<typename K, typename V>
     void insert(K &&key, V &&value) {
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         m_keys_set.emplace(key);
 
@@ -158,7 +163,8 @@ public:
     }
 
     template<typename K>
-    Value *find(K &&key) {
+    Value* find(K &&key) {
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         Node *node = m_head.get();
 
@@ -173,7 +179,7 @@ public:
     }
 
     template<typename K>
-    Value &operator[](K &&key) {
+    Value& operator[](K &&key) {
 
         Value *value = find(key);
 
@@ -183,6 +189,7 @@ public:
     }
 
     void print() {
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         auto print = [](auto &self, auto node, auto drawing, bool is_left) {
 
@@ -193,7 +200,7 @@ public:
             if (is_left) std::cout << "|--";
             else std::cout << (char) 192 << "--";
 
-            std::cout << "k: " << node->m_key << '\n';
+            std::cout << node->m_key << '\n';
 
             if (node->m_left) {
                 self(self, node->m_left.get(),
@@ -213,12 +220,15 @@ public:
     }
 
     void clear() {
+        std::lock_guard<std::mutex> guard(m_mutex);
+
         m_head.reset();
         m_keys_set.clear();
     }
 
     template<typename K>
     void remove(K &&key) {
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         m_keys_set.erase(key);
 
@@ -292,6 +302,43 @@ public:
             parent_of_largest->m_left = std::move(largest->m_left);
 
     }
+
+    void balance() {
+        std::lock_guard<std::mutex> guard(m_mutex);
+
+        std::vector<std::unique_ptr<Node>> all_nodes_vec;
+        all_nodes_vec.reserve(m_keys_set.size());
+
+        auto vectorize = [&](auto &self, auto &node) {
+
+            if (!node) return;
+
+            if (node->m_left)
+                self(self, node->m_left);
+
+            all_nodes_vec.emplace_back(std::move(node));
+
+            if (all_nodes_vec.back()->m_right)
+                self(self, all_nodes_vec.back()->m_right);
+
+        };
+
+        vectorize(vectorize, m_head);
+
+        auto balance_bst = [&](auto &self, size_t low, size_t high,auto &node){
+            if (low >= high) return;
+
+            size_t pos = low + ((high - low) / 2);
+
+            node = std::move(all_nodes_vec[pos]);
+
+            self(self, low, pos, node->m_left);
+            self(self, pos + 1, high, node->m_right);
+        };
+
+        balance_bst(balance_bst, 0, all_nodes_vec.size(), m_head);
+    }
+
 };
 
 

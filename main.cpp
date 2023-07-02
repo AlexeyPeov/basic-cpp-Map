@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdint.h>
 #include <vector>
+#include <thread>
 
 #include "Map.h"
 
@@ -33,29 +34,34 @@ int main() {
 
     Map<int, std::string> map;
 
-    for(int i = 0; i < 25; i++){
-        map.insert(rand() % 135, random_str());
+    for(int i = 0; i < 19; i++){
+        map.insert(i, random_str());
     }
-    Map map_copy = map;
-
 
     map.print();
 
-    std::vector<int> vector;
+    std::cout << "\n\n\nBALANCED:\n";
 
-    for(auto& k : map.keys()){
-        vector.push_back(k);
-    }
+    map.balance();
+    map.print();
 
-    size_t vector_size = vector.size();
+    Map map_copy = map;
+
+    auto keys_vec = std::vector<int>(map.keys().begin(), map.keys().end());
+
+    size_t vector_size = keys_vec.size();
 
     int entry = 0;
-    for(int i = 0; i < vector_size; i++){
+    for(int i = 0; i < (float)vector_size * 0.8; i++){
         entry = *std::next(map.keys().begin(), rand() % map.keys().size());
         map.remove(entry);
-    }
 
-    std::cout << "map.remove test " << ((map.size() == 0) ? "passed" : "not passed") << '\n';
+    }
+    std::cout << "REMOVED A BUNCH OF STUFF: \n";
+    map.print();
+
+
+    std::cout << "map.remove test " << ((map.size() == (size_t)((float)vector_size * 0.2)) ? "passed" : "not passed") << '\n';
 
     std::cout << "map.copy test " << ((map_copy.size() > 0) ? "passed" : "not passed") << '\n';
 
@@ -83,6 +89,36 @@ int main() {
         std::cout << "map.find(key) test: passed\n";
     else
         std::cout << "map.find(key) test: not passed\n";
+
+
+    Map threaded_map = map_move;
+
+    auto insert_elements = [](Map<int, std::string> &map, int amount) -> void{
+
+        for (int i = 0; i < amount; i++)
+            map.insert(rand() % 995,random_str());
+
+    };
+
+    auto remove_elements = [](Map<int, std::string> &map, int amount) -> void{
+        for (int i = 0; i < amount; i++)
+            map.remove(*map.keys().begin());
+    };
+
+    std::thread thread_1(insert_elements, std::ref(threaded_map), 100);
+
+    std::thread thread_2(remove_elements, std::ref(threaded_map), 25);
+
+    std::thread thread_3(&Map<int, std::string>::print, &threaded_map);
+
+
+    thread_1.join();
+    thread_2.join();
+    thread_3.join();
+
+    std::cout << "BALANCED A BIGGER MAP:\n";
+    threaded_map.balance();
+    threaded_map.print();
 
 
     return 0;
