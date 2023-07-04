@@ -5,13 +5,14 @@
 
 #include "Map.h"
 
+#include <map>
 
 
 std::string random_str(){
     std::string str;
     str.reserve(10);
 
-    for(int i = 0; i < 10; i++){
+    for(int i = 1; i < 10; i++){
         str += (char)(65 + rand() % 25);
     }
     return str;
@@ -34,18 +35,15 @@ int main() {
 
     Map<int, std::string> map;
 
-    for(int i = 0; i < 19; i++){
+    for(int i = 1; i < 155; i++){
         map.insert(i, random_str());
     }
 
     map.print();
 
-    std::cout << "\n\n\nBALANCED:\n";
-
-    map.balance();
-    map.print();
 
     Map map_copy = map;
+
 
     auto keys_vec = std::vector<int>(map.keys().begin(), map.keys().end());
 
@@ -116,10 +114,9 @@ int main() {
     thread_2.join();
     thread_3.join();
 
-    std::cout << "BALANCED A BIGGER MAP:\n";
-    threaded_map.balance();
-    threaded_map.print();
-
+    //std::cout << "BALANCED A BIGGER MAP:\n";
+    //threaded_map.balance();
+    //threaded_map.print();
 
     return 0;
 }
